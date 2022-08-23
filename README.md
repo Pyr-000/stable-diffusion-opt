@@ -1,3 +1,19 @@
+# Minimal discord bot
+`discordbot.py` wraps the features of `generate.py` into a minimal discord bot.
+
+DISCLAIMER: DO NOT USE THIS BOT OUTSIDE OF PRIVATE SERVERS WITH TRUSTED MEMBERS ONLY! IT MAY NOT BE SECURE, AND MAY UNINTENTIONALLY GIVE USERS OF THE BOT UNWANTED ACCESS TO YOUR SYSTEM OR WORSE.
+
+While local file access flags (img2img, file prompts) are disabled, this bot has not been sufficiently checked to be 'safe' for wider deployment. Additionally, it will lock up while generating an image, and will not natively queue up prompts while doing so.
+
+The prefix that the bot reacts to can be set at the top of the script via `COMMAND_PREFIX`. All inputs _must_ start with a prompt, which is contained within quotes ("). After this, additional arguments can be added like in the commandline version. Limitations and features noted below (outside of img2img) still apply, this includes e.g. the global seeds.
+
+Example, when `COMMAND_PREFIX="!dream"`:
+```bash
+!dream "painting of an apple" -n 3 -s 25
+```
+
+When requests are too large, and the generated image grid exceeds discords size limit (8MB), uploading the results will fail.
+
 # Universal generate script
 This repository contains an additional script, `generate.py`, for interacting with both text2img and img2img generation. The script is derived from the optimizedSD scripts, and will feature the same tradeoff of reduced memory consumption with reduced generation speed.
 
