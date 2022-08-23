@@ -1,12 +1,44 @@
-# Update: Added optimized_img2img.py
+# Universal generate script
+This repository contains an additional script, `generate.py`, for interacting with both text2img and img2img generation. The script is derived from the optimizedSD scripts, and will feature the same tradeoff of reduced memory consumption with reduced generation speed.
 
-This code can now generate a 512x512 image from prior images using less than 4GB of RAM (in less than 20 seconds on RTX 2060)
+`generate.py` contains some additional features, including: 
+ - storing of the prompt and relevant args as PNG metadata
+ - creating a text file of the prompt and relevant args for each generated image set
+  (same name as the image file, can be used for detecting newly generated images and reading their parameters when automatically maintaining an external image gallery. Especially as this repository does not feature the NSFW filter, images should be manually reviewed before being automatically integrated into a publicly viewable gallery, however.)
+ - unique, timestamped filenames
+ - fixing of incorrect input dimensions to multiples of 64
+
+Note that the seed stored in the metadata is a _global seed_ for all images when generating more than one image. To retrieve images of the same seed, both the original seed and the original batch size need to be set.
+## txt2img
+Prompts are taken as a positional argument, making the simplest way of generating an image using text2img:
+```bash
+python generate.py "painting of a painter painting a painting"
+```
+<img src="./assets/a_painting_of_a_painter_painting_a_painting.png" width="25%" height=25%/>
+
+Multiple prompts can also be specified this way, separated by '||'. The batch items (when generating multiple images) will cycle through the prompts:
+```bash
+python generate.py "studio photograph of an apple || masterful psychedelic painting of an apple" -n 4
+```
+
+<img src="./assets/masterful_psychedelic_painting_of_an_apple_studio_photograph_of_an_apple.png" width="25%" height=25%/>
+
+## img2img
+Generating outputs using img2img is accessed the same way as generating outputs using text2img. When specifying a path to the initial image using either `-ii` or `--init_img`, `generate.py` switches to img2img mode:
+```bash
+python generate.py "a prompt" -ii "./input_image.png"
+```
+For an example, see section [Image Modification with Stable Diffusion](#Modification) below.
 
 # Optimized Stable Diffusion (Sort of)
 
 - This repo is a modified version of the Stable Diffusion repo, optimized to use lesser VRAM than the original by sacrificing on inference speed.
 
 - It has two python files. 1) `optimized_img2img.py` to generate new image based on a given image and prompt. 2) `optimized_txt2img.py` to generate an image based only on a prompt.
+
+# Update: Added optimized_img2img.py
+
+This code can now generate a 512x512 image from prior images using less than 4GB of RAM (in less than 20 seconds on RTX 2060)
 
 ## img2img
 
@@ -181,7 +213,7 @@ For this reason `use_ema=False` is set in the configuration, otherwise the code 
 non-EMA to EMA weights. If you want to examine the effect of EMA vs no EMA, we provide "full" checkpoints
 which contain both types of weights. For these, `use_ema=False` will load and use the non-EMA weights.
 
-### Image Modification with Stable Diffusion
+### <a name="Modification"></a> Image Modification with Stable Diffusion
 
 By using a diffusion-denoising mechanism as first proposed by [SDEdit](https://arxiv.org/abs/2108.01073), the model can be used for different
 tasks such as text-guided image-to-image translation and upscaling. Similar to the txt2img sampling script,
