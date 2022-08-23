@@ -317,7 +317,7 @@ def cleanup_str(input):
     # limit to something reasonable
     while "__" in new_string:
         new_string = new_string.replace("__","_")
-    return new_string[:256], s
+    return new_string[:64], s
 
 def to_metadata(prompt, ARGS) -> PngInfo:
     argdict = vars(ARGS)
