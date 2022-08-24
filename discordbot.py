@@ -402,7 +402,7 @@ async def on_message(message: discord.Message):
                 url = message.attachments[0].url
                 r = requests.get(url, stream=True)
                 r.raw.decode_content = True # Content-Encoding
-                img = Image.open(r.raw)
+                img = Image.open(r.raw).convert("RGB")
                 # img.show()
             else:
                 img = None
