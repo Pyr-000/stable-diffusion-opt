@@ -79,6 +79,8 @@ def main(manual_args=None, source_img=None):
     TIMESTAMP = datetime.today().strftime('%Y%m%d%H%M%S')
 
     # write back the actual (random) seed if None was passed.
+    if opt.seed is None:
+        opt.seed = random.randint(1, 2703686851)
     opt.seed = seed_everything(opt.seed)
 
     # truncate incorrect input dimensions to a multiple of 64
