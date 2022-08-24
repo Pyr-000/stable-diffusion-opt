@@ -1,5 +1,6 @@
 import argparse, os, sys, glob, random
 from typing import Tuple
+import requests
 import torch
 import numpy as np
 import copy
@@ -31,7 +32,7 @@ def parse_args(manual_args=None):
     parser.add_argument(type=str, nargs="?", default="a painting of a painter painting a painting", help="text prompt for generation. Multiple prompts can be specified, separated by '||'", dest="prompt")
     parser.add_argument("-ii", "--init_img", type=str, default=None, help="use img2img mode. path to the input image", dest="init_img")
     parser.add_argument("-st", "--strength", type=float, default=0.75, help="init image strength for noising/de-noising. 1.0 corresponds to full destruction of initial information", dest="strength")
-    parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/generated")
+    #parser.add_argument("--outdir", type=str, nargs="?", help="dir to write results to", default="outputs/generated")
     parser.add_argument("--skip_save", action='store_true', help="do not save individual samples. For speed measurements.", dest="skip_save")
     parser.add_argument("-s","--ddim_steps", type=int, default=50, help="number of ddim sampling steps", dest="ddim_steps")
     parser.add_argument("--plms", action='store_true', help="use plms sampling", dest="plms")
@@ -46,8 +47,8 @@ def parse_args(manual_args=None):
     parser.add_argument("--n_rows", type=int, default=None, help="rows in the grid (default will create a square grid)", dest="n_rows")
     parser.add_argument("-cs", "--scale", type=float, default=7.5, help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))", dest="scale")
     parser.add_argument("--from-file", type=str, help="if specified, load prompts from this file")
-    parser.add_argument("--config", type=str, default="optimizedSD/v1-inference.yaml", help="path to config which constructs model", dest="config")
-    parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model", dest="ckpt")
+    #parser.add_argument("--config", type=str, default="optimizedSD/v1-inference.yaml", help="path to config which constructs model", dest="config")
+    #parser.add_argument("--ckpt", type=str, default="models/ldm/stable-diffusion-v1/model.ckpt", help="path to checkpoint of model", dest="ckpt")
     parser.add_argument("-S","--seed", type=int, default=None, help="the seed, for reproducible sampling (None will select a random seed)", dest="seed")
     parser.add_argument("--precision", type=str, help="evaluate at this precision", choices=["full", "autocast"], default="autocast")
     parser.add_argument("--small_batch", action='store_true', help="Reduce inference time when generate a smaller batch of images", dest="small_batch")
@@ -59,11 +60,14 @@ def parse_args(manual_args=None):
 # any properties of opt specified here will be stored in PNG metadata, in addition to the prompt text.
 EXTRA_ARGS_TO_STORE = ["ddim_steps", "plms", "fixed_code", "ddim_eta", "H", "W", "C", "f", "scale", "seed", "init_img", "strength"]
 
-def main(manual_args=None):
+def main(manual_args=None, source_img=None):
     if manual_args is not None:
         opt = parse_args(manual_args)
     else:
         opt = parse_args()
+    opt.config = "optimizedSD/v1-inference.yaml"
+    opt.ckpt = "models/ldm/stable-diffusion-v1/model.ckpt"
+    opt.outdir = "outputs/generated"
     timetrace = {"start":time.time()}
     #outpath = opt.outdir
     OUTPUTS_DIR = opt.outdir
@@ -86,17 +90,15 @@ def main(manual_args=None):
     do_autocast = opt.precision == "autocast"
     model, modelCS, modelFS = load_and_configure_model(opt.ckpt, opt.config, opt.ddim_steps, do_autocast, opt.small_batch)
 
-    """ NO LOCAL FILE ACCESS FOR THE BOT!
-    if opt.init_img is not None:
-        init_latent = load_and_preprocess_image(opt.init_img, opt.H, opt.W, batch_size, modelFS, do_autocast)
+    if source_img is not None:
+        init_latent = load_and_preprocess_image(source_img, opt.H, opt.W, batch_size, modelFS, do_autocast)
     else:
         init_latent = None
-    """
-    init_latent = None
 
     start_code = None
     if opt.fixed_code:
         start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=device)
+
 
     if True:
         prompt:str = opt.prompt
@@ -108,7 +110,6 @@ def main(manual_args=None):
         #data = [batch_size * [prompt]]
 
     else:
-        # NO FILE ACCESS FOR THE BOT!
         print(f"reading prompts from {opt.from_file}")
         with open(opt.from_file, "r") as f:
             data = f.read().splitlines()
@@ -250,8 +251,8 @@ def load_and_configure_model(ckpt, config_path, ddim_steps=50, autocast=True, sm
         modelCS.half()
     return model, modelCS, modelFS
 
-def load_and_preprocess_image(image_path, H, W, batch_size, modelFS, autocast=True):
-    init_image = load_img(image_path, H, W).to(device)
+def load_and_preprocess_image(source_img, H, W, batch_size, modelFS, autocast=True):
+    init_image = load_img(source_img, H, W).to(device)
     if autocast:
         init_image = init_image.half()
         modelFS.half()
@@ -276,11 +277,11 @@ def load_model_from_config(ckpt, verbose=False):
     sd = pl_sd["state_dict"]
     return sd
 
-def load_img(path, h0, w0):
-    image = Image.open(path).convert("RGB")
+def load_img(source_img, h0, w0):
+    image = source_img
     w, h = image.size
 
-    print(f"loaded input image of size ({w}, {h}) from {path}")   
+    print(f"loaded input image of size ({w}, {h})")   
     if(h0 is not None and w0 is not None):
         h, w = h0, w0
     
@@ -397,7 +398,14 @@ async def on_message(message: discord.Message):
 
     if message.content.startswith(COMMAND_PREFIX):
         try:
-            # reply requires additional permissions, so this is set to use a normal message by default.
+            if (len(message.attachments) > 0):
+                url = message.attachments[0].url
+                r = requests.get(url, stream=True)
+                r.raw.decode_content = True # Content-Encoding
+                img = Image.open(r.raw)
+                # img.show()
+            else:
+                img = None
             #await message.reply("Processing...")
             await message.channel.send("Processing...")
             # remove command prefix (e.g. "dream>") from start of message
@@ -408,7 +416,7 @@ async def on_message(message: discord.Message):
                 await message.channel.send(f"Malformed request: {command}.\nrequest must first contain a prompt, in \" \", after which additional args may be added. E.g.:\n```\n{COMMAND_PREFIX} \"painting of an apple\" -n 3 -s 25```")
                 return
             args = [separated_command[1]] + [x for x in separated_command[2].split(" ") if not len(x) == 0]
-            grid_path = main(args)
+            grid_path = main(args, img)
             print(f"sending: {grid_path}")
             #await message.reply("Done!", file=grid_path)
             await message.channel.send("Done!", file=discord.File(grid_path))

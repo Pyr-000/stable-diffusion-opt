@@ -3,9 +3,11 @@
 
 DISCLAIMER: DO NOT USE THIS BOT OUTSIDE OF PRIVATE SERVERS WITH TRUSTED MEMBERS ONLY! IT MAY NOT BE SECURE, AND MAY UNINTENTIONALLY GIVE USERS OF THE BOT UNWANTED ACCESS TO YOUR SYSTEM OR WORSE.
 
-While local file access flags (img2img, file prompts) are disabled, this bot has not been sufficiently checked to be 'safe' for wider deployment. Additionally, it will lock up while generating an image, and will not natively queue up prompts while doing so.
+While local file access flags (file prompts) are disabled, this bot has not been sufficiently checked to be 'safe' for wider deployment. Additionally, it will lock up while generating an image, and will not natively queue up prompts while doing so.
 
-The prefix that the bot reacts to can be set at the top of the script via `COMMAND_PREFIX`. All inputs _must_ start with a prompt, which is contained within quotes ("). After this, additional arguments can be added like in the commandline version. Limitations and features noted below (outside of img2img) still apply, this includes e.g. the global seeds.
+The prefix that the bot reacts to can be set at the top of the script via `COMMAND_PREFIX`. All inputs _must_ start with a prompt, which is contained within quotes ("). After this, additional arguments can be added like in the commandline version. Limitations and features noted below still apply, this includes e.g. the global seeds.
+
+To run the bot in img2img mode, users can simply attach an image to their request. If there is more than one image attached, only the first one is used.
 
 Example, when `COMMAND_PREFIX="!dream"`:
 ```bash
